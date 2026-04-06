@@ -1,0 +1,33 @@
+{
+  "entity": {
+    "sensor": {
+      "power_generation": {"name": "Power Generation"},
+      "yield_today": {"name": "Yield Today"},
+      "yield_total": {"name": "Total Yield"},
+      "ac_voltage": {"name": "AC Voltage"},
+      "ac_current": {"name": "AC Current"},
+      "ac_frequency": {"name": "AC Frequency"}
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Deye Microinverter",
+        "data": {
+          "host": "IP Address",
+          "port": "Port",
+          "serial_number": "Serial Number"
+        },
+        "data_description": {
+          "serial_number": "10-digit serial number (e.g. 4173111111)"
+        }
+      }
+    },
+    "error": {
+      "invalid_serial_number": "Serial number must be exactly 10 digits (e.g. 4173111111)"
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured"
+    }
+  }
+}
