@@ -11,7 +11,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_SERIAL_NUMBER, DOMAIN
+from .const import CONF_IS_G4, CONF_SERIAL_NUMBER, DOMAIN
 from .coordinator import DeyeCoordinator
 from .inverter import REG_POWER_LIMIT, REG_POWER_LIMIT_G4
 
@@ -29,10 +29,11 @@ async def async_setup_entry(
 ) -> None:
     coordinator: DeyeCoordinator = hass.data[DOMAIN][entry.entry_id]
     serial = entry.data[CONF_SERIAL_NUMBER]
-    async_add_entities([
-        DeyePowerLimitNumber(coordinator, serial),
-        DeyePowerLimitG4Number(coordinator, serial),
-    ])
+    is_g4 = entry.data.get(CONF_IS_G4, False)
+    if is_g4:
+        async_add_entities([DeyePowerLimitG4Number(coordinator, serial)])
+    else:
+        async_add_entities([DeyePowerLimitNumber(coordinator, serial)])
 
 
 class DeyePowerLimitNumber(CoordinatorEntity[DeyeCoordinator], NumberEntity):

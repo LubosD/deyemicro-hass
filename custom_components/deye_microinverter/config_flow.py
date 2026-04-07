@@ -7,7 +7,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT
 
-from .const import CONF_SERIAL_NUMBER, DOMAIN
+from .const import CONF_IS_G4, CONF_SERIAL_NUMBER, DOMAIN
 
 SERIAL_NUMBER_PATTERN = re.compile(r"^\d{10}$")
 DEFAULT_PORT = 8899
@@ -45,6 +45,7 @@ class DeyeMicroinverterConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_HOST): str,
                     vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int),
                     vol.Required(CONF_SERIAL_NUMBER): str,
+                    vol.Required(CONF_IS_G4, default=False): bool,
                 }
             ),
             errors=errors,
