@@ -1,17 +1,23 @@
 """Deye Microinverter integration."""
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 from .const import CONF_SERIAL_NUMBER, DOMAIN, PLATFORMS
-from .coordinator import DeyeCoordinator
 from .inverter import DeyeModbus
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Deye Microinverter from a config entry."""
+    from homeassistant.const import CONF_HOST, CONF_PORT
+    from homeassistant.exceptions import ConfigEntryNotReady
+    from .coordinator import DeyeCoordinator
+
     inverter = DeyeModbus(
         ip_address=entry.data[CONF_HOST],
         port=entry.data[CONF_PORT],

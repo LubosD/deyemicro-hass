@@ -23,7 +23,7 @@ REG_AC_FREQUENCY = 79       # AC frequency, unit 0.01 Hz
 REG_AC_VOLTAGE_LAST = 79    # AC voltage/current/frequency range end
 REG_POWER_GENERATION = 86   # current AC output power, unit 0.1 W
 REG_POWER_LIMIT = 40        # active power limit, unit % (older models)
-REG_POWER_LIMIT_G4 = 53     # active power limit, unit % (G4/newer models)
+REG_POWER_LIMIT_G4 = 53     # active power limit, unit 0.01% (G4/newer models; 10000 = 100%)
 
 
 class DeyeModbus:

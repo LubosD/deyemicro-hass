@@ -155,9 +155,10 @@ class DeyePowerLimitG4Number(CoordinatorEntity[DeyeCoordinator], NumberEntity):
     def _set_power_limit_g4(self, value: int) -> bool:
         """Blocking write with retries — intended to run in a thread-pool executor."""
         _LOGGER.debug("Setting inverter power limit G4 to %d%%", value)
+        reg_value = value * 100  # register uses 0.01% units (10000 = 100%)
         for attempt in range(1, _WRITE_RETRIES + 1):
             try:
-                if self.coordinator.inverter.write_register_uint(REG_POWER_LIMIT_G4, value):
+                if self.coordinator.inverter.write_register_uint(REG_POWER_LIMIT_G4, reg_value):
                     _LOGGER.debug(
                         "Power limit G4 set to %d%% on attempt %d; waiting %ds for inverter to settle",
                         value,

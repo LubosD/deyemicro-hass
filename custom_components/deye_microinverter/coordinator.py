@@ -61,7 +61,7 @@ class DeyeCoordinator(DataUpdateCoordinator[dict]):
         # Register 53 is only present on G4/newer models; absence is not an error.
         power_limit_g4_regs = self.inverter.read_registers(REG_POWER_LIMIT_G4, REG_POWER_LIMIT_G4)
         power_limit_g4 = (
-            int.from_bytes(power_limit_g4_regs[REG_POWER_LIMIT_G4], "big")
+            int.from_bytes(power_limit_g4_regs[REG_POWER_LIMIT_G4], "big") / 100
             if power_limit_g4_regs
             else None
         )
