@@ -10,10 +10,11 @@ import socket
 _LOGGER = logging.getLogger(__name__)
 
 # Modbus register addresses
-REG_YIELD_TODAY_FIRST = 60  # daily yield, unit 0.1 kWh (range start)
-REG_YIELD_TODAY = 60        # daily yield, unit 0.1 kWh
-REG_YIELD_TOTAL = 62        # total yield, unit 0.1 kWh
-REG_YIELD_TODAY_LAST = 62   # daily/total yield range end
+REG_YIELD_TODAY_FIRST = 60   # daily yield, unit 0.1 kWh (range start)
+REG_YIELD_TODAY = 60         # daily yield, unit 0.1 kWh
+REG_YIELD_TOTAL = 63         # total yield, low word of 32-bit value, unit 0.1 kWh
+REG_YIELD_TOTAL_HIGH = 64    # total yield, high word of 32-bit value
+REG_YIELD_TODAY_LAST = 64    # yield register range end
 REG_AC_VOLTAGE_FIRST = 73   # AC voltage range start
 REG_AC_VOLTAGE = 73         # AC voltage, unit 0.1 V
 REG_AC_CURRENT = 74         # AC current, unit 0.1 A

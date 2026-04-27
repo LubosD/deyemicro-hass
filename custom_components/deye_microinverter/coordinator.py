@@ -20,6 +20,7 @@ from .inverter import (
     REG_YIELD_TODAY_FIRST,
     REG_YIELD_TODAY_LAST,
     REG_YIELD_TOTAL,
+    REG_YIELD_TOTAL_HIGH,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,7 +72,10 @@ class DeyeCoordinator(DataUpdateCoordinator[dict]):
             "power_limit": int.from_bytes(power_limit_regs[REG_POWER_LIMIT], "big"),
             "power_limit_g4": power_limit_g4,
             "yield_today": int.from_bytes(yield_regs[REG_YIELD_TODAY], "big") / 10,
-            "yield_total": int.from_bytes(yield_regs[REG_YIELD_TOTAL], "big") / 10,
+            "yield_total": (
+                (int.from_bytes(yield_regs[REG_YIELD_TOTAL_HIGH], "big") << 16)
+                | int.from_bytes(yield_regs[REG_YIELD_TOTAL], "big")
+            ) / 10,
             "ac_voltage": int.from_bytes(ac_regs[REG_AC_VOLTAGE], "big") / 10,
             "ac_current": int.from_bytes(ac_regs[REG_AC_CURRENT], "big") / 10,
             "ac_frequency": int.from_bytes(ac_regs[REG_AC_FREQUENCY], "big") / 100,

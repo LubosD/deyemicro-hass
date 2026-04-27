@@ -46,7 +46,7 @@ class DeyePowerLimitNumber(CoordinatorEntity[DeyeCoordinator], NumberEntity):
     _attr_native_min_value = 1
     _attr_native_max_value = 100
     _attr_native_step = 1
-    _attr_mode = NumberMode.BOX
+    _attr_mode = NumberMode.SLIDER
     _attr_native_unit_of_measurement = PERCENTAGE
 
     def __init__(self, coordinator: DeyeCoordinator, serial: str) -> None:
@@ -111,7 +111,7 @@ class DeyePowerLimitG4Number(CoordinatorEntity[DeyeCoordinator], NumberEntity):
     _attr_native_min_value = 1
     _attr_native_max_value = 100
     _attr_native_step = 1
-    _attr_mode = NumberMode.BOX
+    _attr_mode = NumberMode.SLIDER
     _attr_native_unit_of_measurement = PERCENTAGE
 
     def __init__(self, coordinator: DeyeCoordinator, serial: str) -> None:
