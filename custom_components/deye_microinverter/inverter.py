@@ -7,8 +7,6 @@ Register map: https://github.com/jedie/inverter-connect/blob/main/inverter/defin
 import logging
 import socket
 
-import libscrc
-
 _LOGGER = logging.getLogger(__name__)
 
 # Modbus register addresses
@@ -80,10 +78,21 @@ class DeyeModbus:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _crc(frame: bytearray) -> bytearray:
-        crc = bytearray.fromhex("{:04x}".format(libscrc.modbus(frame)))
-        crc.reverse()
+    def _modbus_crc(frame: bytes | bytearray) -> int:
+        crc = 0xFFFF
+        for byte in frame:
+            crc ^= byte
+            for _ in range(8):
+                if crc & 0x0001:
+                    crc = (crc >> 1) ^ 0xA001
+                else:
+                    crc >>= 1
         return crc
+
+    @staticmethod
+    def _crc(frame: bytearray) -> bytearray:
+        crc = DeyeModbus._modbus_crc(frame)
+        return bytearray([crc & 0xFF, crc >> 8])
 
     @staticmethod
     def _build_read_request(first_reg: int, last_reg: int) -> bytearray:
@@ -115,7 +124,7 @@ class DeyeModbus:
         actual_crc = int.from_bytes(
             frame[expected_data_len: expected_data_len + 2], "little"
         )
-        expected_crc = libscrc.modbus(frame[:expected_data_len])
+        expected_crc = DeyeModbus._modbus_crc(frame[:expected_data_len])
         if actual_crc != expected_crc:
             _LOGGER.warning(
                 "Modbus read CRC mismatch: expected %04x, got %04x",
@@ -140,7 +149,7 @@ class DeyeModbus:
         actual_crc = int.from_bytes(
             frame[expected_data_len: expected_data_len + 2], "little"
         )
-        expected_crc = libscrc.modbus(frame[:expected_data_len])
+        expected_crc = DeyeModbus._modbus_crc(frame[:expected_data_len])
         if actual_crc != expected_crc:
             _LOGGER.warning(
                 "Modbus write CRC mismatch: expected %04x, got %04x",
