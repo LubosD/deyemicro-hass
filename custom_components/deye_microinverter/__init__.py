@@ -12,6 +12,14 @@ from .const import CONF_SERIAL_NUMBER, DOMAIN, PLATFORMS
 from .inverter import DeyeModbus
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old config entry versions."""
+    if entry.version == 1:
+        data = {k: v for k, v in entry.data.items() if k != "is_g4"}
+        hass.config_entries.async_update_entry(entry, data=data, version=2)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Deye Microinverter from a config entry."""
     from homeassistant.const import CONF_HOST, CONF_PORT
@@ -39,7 +47,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    coordinator = hass.data[DOMAIN].get(entry.entry_id)
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         hass.data[DOMAIN].pop(entry.entry_id)
+        if coordinator is not None:
+            await hass.async_add_executor_job(coordinator.inverter.close)
     return unloaded

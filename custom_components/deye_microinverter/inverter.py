@@ -21,8 +21,7 @@ REG_AC_CURRENT = 74         # AC current, unit 0.1 A
 REG_AC_FREQUENCY = 79       # AC frequency, unit 0.01 Hz
 REG_AC_VOLTAGE_LAST = 79    # AC voltage/current/frequency range end
 REG_POWER_GENERATION = 86   # current AC output power, unit 0.1 W
-REG_POWER_LIMIT = 40        # active power limit, unit % (older models)
-REG_POWER_LIMIT_G4 = 53     # active power limit, unit 0.01% (G4/newer models; 10000 = 100%)
+REG_POWER_LIMIT = 40        # active power limit, unit %
 
 
 class DeyeModbus:
@@ -37,6 +36,7 @@ class DeyeModbus:
         self._port = port
         self._serial_number = serial_number
         self._reachable = True
+        self._sock: socket.socket | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -245,16 +245,88 @@ class DeyeModbus:
     # Transport
     # ------------------------------------------------------------------
 
+    def close(self) -> None:
+        """Close the persistent TCP connection."""
+        self._disconnect()
+
+    def _disconnect(self) -> None:
+        if self._sock is not None:
+            try:
+                self._sock.close()
+            except OSError:
+                pass
+            self._sock = None
+
+    def _ensure_connected(self) -> socket.socket:
+        if self._sock is None:
+            sock = socket.create_connection((self._ip_address, self._port), timeout=5)
+            sock.settimeout(5)
+            self._sock = sock
+            if not self._reachable:
+                _LOGGER.info("Reconnected to inverter at %s", self._ip_address)
+                self._reachable = True
+        return self._sock
+
     def _send_request(self, modbus_frame: bytearray) -> bytes | None:
         req_frame = self._build_outer_frame(modbus_frame)
         resp_frame = self._send_tcp(req_frame)
         return self._extract_modbus_frame(resp_frame)
 
-    def _send_tcp(self, req_frame: bytearray) -> bytes | None:
-        try:
-            sock = socket.create_connection(
-                (self._ip_address, self._port), timeout=5
+    # SolarmanV5 keepalive/heartbeat control code (0x4710 little-endian)
+    _CTRL_KEEPALIVE = b"\x10\x47"
+
+    def _recv_outer_frame(self, sock: socket.socket) -> bytes | None:
+        """Read exactly one complete SolarmanV5 outer frame from the socket.
+
+        Buffers partial TCP reads until the full frame (determined by the
+        2-byte length field at bytes 1-2) is assembled.  Raises OSError /
+        socket.timeout so the caller can decide whether to reconnect.
+        """
+        buf = bytearray()
+
+        # Phase 1: collect the start byte + 2-byte length field.
+        while len(buf) < 3:
+            chunk = sock.recv(1024)
+            if not chunk:
+                return None
+            buf.extend(chunk)
+
+        if buf[0] != 0xA5:
+            return bytes(buf)  # unexpected; _extract_modbus_frame will log it
+
+        payload_len = int.from_bytes(buf[1:3], "little")
+        # Total = start(1) + length_field(2) + payload + checksum(1) + end(1)
+        total_len = payload_len + 5
+
+        if total_len > 512:
+            _LOGGER.warning(
+                "Implausible frame length %d from %s", total_len, self._ip_address
             )
+            return bytes(buf)
+
+        # Phase 2: collect the remainder of the frame.
+        while len(buf) < total_len:
+            chunk = sock.recv(total_len - len(buf))
+            if not chunk:
+                _LOGGER.warning(
+                    "Connection closed mid-frame (%d/%d bytes) from %s",
+                    len(buf),
+                    total_len,
+                    self._ip_address,
+                )
+                break
+            buf.extend(chunk)
+
+        return bytes(buf)
+
+    def _try_send_tcp(self, req_frame: bytearray) -> bytes | None:
+        """Attempt one send+receive cycle on the current (or newly opened) connection.
+
+        Returns None and sets self._sock to None if the connection was lost,
+        signalling the caller to retry on a fresh socket.
+        """
+        try:
+            sock = self._ensure_connected()
         except OSError as err:
             if self._reachable:
                 _LOGGER.warning(
@@ -266,29 +338,47 @@ class DeyeModbus:
                 self._reachable = False
             return None
 
-        if not self._reachable:
-            _LOGGER.info("Reconnected to inverter at %s", self._ip_address)
-            self._reachable = True
-
         try:
             sock.sendall(req_frame)
-            for _ in range(5):
-                try:
-                    data = sock.recv(1024)
-                    if data:
-                        return data
-                    _LOGGER.debug("Empty response from inverter at %s", self._ip_address)
-                except socket.timeout:
-                    _LOGGER.debug("Receive timeout from inverter at %s", self._ip_address)
-                except OSError as err:
-                    _LOGGER.warning(
-                        "Socket error from inverter at %s: %s", self._ip_address, err
-                    )
-                    return None
-        finally:
-            sock.close()
+        except OSError as err:
+            _LOGGER.debug("Send failed, will reconnect: %s", err)
+            self._disconnect()
+            return None
+
+        for _ in range(5):
+            try:
+                frame = self._recv_outer_frame(sock)
+            except socket.timeout:
+                _LOGGER.debug("Receive timeout from inverter at %s", self._ip_address)
+                continue
+            except OSError as err:
+                _LOGGER.warning(
+                    "Socket error from inverter at %s: %s", self._ip_address, err
+                )
+                self._disconnect()
+                return None
+
+            if not frame:
+                _LOGGER.debug("Empty response from inverter at %s", self._ip_address)
+                continue
+
+            # Silently discard keepalive/heartbeat frames and keep waiting.
+            if len(frame) >= 5 and frame[3:5] == self._CTRL_KEEPALIVE:
+                _LOGGER.debug("Discarding keepalive frame from %s", self._ip_address)
+                continue
+
+            return frame
 
         _LOGGER.warning(
             "No valid response from inverter at %s after retries", self._ip_address
         )
         return None
+
+    def _send_tcp(self, req_frame: bytearray) -> bytes | None:
+        response = self._try_send_tcp(req_frame)
+        if response is not None:
+            return response
+        # Socket was dropped (stale connection) — retry once with a fresh connection.
+        if self._sock is None:
+            response = self._try_send_tcp(req_frame)
+        return response

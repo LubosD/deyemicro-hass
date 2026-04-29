@@ -16,8 +16,7 @@
         "data": {
           "host": "IP Address",
           "port": "Port",
-          "serial_number": "Serial Number",
-          "is_g4": "G4 device"
+          "serial_number": "Serial Number"
         },
         "data_description": {
           "serial_number": "10-digit serial number (e.g. 4173111111)"

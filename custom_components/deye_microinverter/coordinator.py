@@ -15,7 +15,6 @@ from .inverter import (
     REG_AC_VOLTAGE_LAST,
     REG_POWER_GENERATION,
     REG_POWER_LIMIT,
-    REG_POWER_LIMIT_G4,
     REG_YIELD_TODAY,
     REG_YIELD_TODAY_FIRST,
     REG_YIELD_TODAY_LAST,
@@ -59,18 +58,9 @@ class DeyeCoordinator(DataUpdateCoordinator[dict]):
                 "No data from inverter — device may be unreachable or powered off"
             )
 
-        # Register 53 is only present on G4/newer models; absence is not an error.
-        power_limit_g4_regs = self.inverter.read_registers(REG_POWER_LIMIT_G4, REG_POWER_LIMIT_G4)
-        power_limit_g4 = (
-            int.from_bytes(power_limit_g4_regs[REG_POWER_LIMIT_G4], "big") / 100
-            if power_limit_g4_regs
-            else None
-        )
-
         return {
             "power_generation": int.from_bytes(power_gen_regs[REG_POWER_GENERATION], "big") / 10,
             "power_limit": int.from_bytes(power_limit_regs[REG_POWER_LIMIT], "big"),
-            "power_limit_g4": power_limit_g4,
             "yield_today": int.from_bytes(yield_regs[REG_YIELD_TODAY], "big") / 10,
             "yield_total": (
                 (int.from_bytes(yield_regs[REG_YIELD_TOTAL_HIGH], "big") << 16)
